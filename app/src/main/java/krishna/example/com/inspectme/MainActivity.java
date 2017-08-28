@@ -23,132 +23,61 @@
 package krishna.example.com.inspectme;
 
 import android.app.Activity;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.os.Bundle;
-import android.widget.RadioGroup;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Messenger;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.widget.TextView;
-import java.text.DecimalFormat;
+import android.widget.Toast;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.ActivityRecognition;
+
 
 public class MainActivity extends Activity
-        implements SensorEventListener, RadioGroup.OnCheckedChangeListener {
+        implements GoogleApiClient.ConnectionCallbacks,GoogleApiClient.OnConnectionFailedListener{
 
-    private SensorFusion sensorFusion;
-    private BubbleLevelCompass bubbleLevelCompass;
-    private SensorManager sensorManager = null;
+    public GoogleApiClient googleApiClient;
+    private TextView tv1,tv2,tv3;
 
-    private RadioGroup setModeRadioGroup;
-    private TextView azimuthText, pithText, rollText;
-    private DecimalFormat d = new DecimalFormat("#.##");
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        sensorManager = (SensorManager) this.getSystemService(SENSOR_SERVICE);
-        registerSensorManagerListeners();
+        tv1 = (TextView)findViewById(R.id.tv1);
+        tv2 = (TextView)findViewById(R.id.tv2);
+        tv3 = (TextView)findViewById(R.id.tv3);
 
-        d.setMaximumFractionDigits(2);
-        d.setMinimumFractionDigits(2);
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(ActivityRecognition.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
 
-        sensorFusion = new SensorFusion();
-        sensorFusion.setMode(SensorFusion.Mode.ACC_MAG);
-
-        bubbleLevelCompass = (BubbleLevelCompass) this.findViewById(R.id.SensorFusionView);
-        setModeRadioGroup = (RadioGroup) findViewById(R.id.radioGroup1);
-        azimuthText = (TextView) findViewById(R.id.azmuth);
-        pithText = (TextView) findViewById(R.id.pitch);
-        rollText = (TextView) findViewById(R.id.roll);
-        setModeRadioGroup.setOnCheckedChangeListener(this);
-    }
-
-    public void updateOrientationDisplay() {
-
-        double azimuthValue = sensorFusion.getAzimuth();
-        double rollValue =  sensorFusion.getRoll();
-        double pitchValue =  sensorFusion.getPitch();
-
-        azimuthText.setText(String.valueOf(d.format(azimuthValue)));
-        pithText.setText(String.valueOf(d.format(pitchValue)));
-        rollText.setText(String.valueOf(d.format(rollValue)));
-
-        bubbleLevelCompass.setPLeft((int) rollValue);
-        bubbleLevelCompass.setPTop((int) pitchValue);
-        bubbleLevelCompass.setAzimuth((int) azimuthValue);
-    }
-
-    public void registerSensorManagerListeners() {
-        sensorManager.registerListener(this,
-                sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
-                SensorManager.SENSOR_DELAY_FASTEST);
-
-        sensorManager.registerListener(this,
-                sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE),
-                SensorManager.SENSOR_DELAY_FASTEST);
-
-        sensorManager.registerListener(this,
-                sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
-                SensorManager.SENSOR_DELAY_FASTEST);
+        googleApiClient.connect();
     }
 
     @Override
-    public void onStop() {
-        super.onStop();
-        sensorManager.unregisterListener(this);
+    public void onConnected(@Nullable Bundle bundle) {
+        Intent intent = new Intent( this, MyIntentService.class );
+        PendingIntent pendingIntent = PendingIntent.getService( this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT );
+        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates( googleApiClient, 3000, pendingIntent );
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        sensorManager.unregisterListener(this);
+    public void onConnectionSuspended(int i) {
+        Toast.makeText(this,"Connection failed",Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        registerSensorManagerListeners();
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Toast.makeText(this,"Connection failed",Toast.LENGTH_SHORT).show();
     }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-    }
-
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        switch (event.sensor.getType()) {
-            case Sensor.TYPE_ACCELEROMETER:
-                sensorFusion.setAccel(event.values);
-                sensorFusion.calculateAccMagOrientation();
-                break;
-
-            case Sensor.TYPE_GYROSCOPE:
-                sensorFusion.gyroFunction(event);
-                break;
-
-            case Sensor.TYPE_MAGNETIC_FIELD:
-                sensorFusion.setMagnet(event.values);
-                break;
-        }
-        updateOrientationDisplay();
-    }
-
-    @Override
-    public void onCheckedChanged(RadioGroup group, int checkedId) {
-
-        switch (checkedId) {
-            case R.id.radio0:
-                sensorFusion.setMode(SensorFusion.Mode.ACC_MAG);
-                break;
-            case R.id.radio1:
-                sensorFusion.setMode(SensorFusion.Mode.GYRO);
-                break;
-            case R.id.radio2:
-                sensorFusion.setMode(SensorFusion.Mode.FUSION);
-                break;
-        }
-    }
-
 }
