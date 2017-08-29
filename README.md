@@ -7,3 +7,5 @@ Reference - "https://developers.google.com/android/reference/com/google/android/
 Project extended from the work -"https://code.tutsplus.com/tutorials/how-to-recognize-user-activity-with-activity-recognition--cms-25851"
 
 I added broadcasting intents so that the result can be displayed in MainActivity. 
+Two Screenshots of the app are uploaded.
+Keep coding :D
